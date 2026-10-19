@@ -1,10 +1,14 @@
 package frc.robot.lib.motors;
 
+import org.littletonrobotics.junction.LogTable;
+import org.littletonrobotics.junction.inputs.LoggableInputs;
+
 /**
  * Estrutura de dados contendo os dados de telemetria e estado lidos do motor.
- * Segue o padrao IO layer do AdvantageKit/WPILib para logging e determinismo.
+ * Segue o padrao IO layer do AdvantageKit: e registrada com {@code Logger.processInputs(...)} e
+ * permite replay deterministico dos logs.
  */
-public class MotorInputs {
+public class MotorInputs implements LoggableInputs {
   /** Posicao medida no eixo de saida do mecanismo (em rotacoes). */
   public double positionRotations = 0.0;
 
@@ -34,4 +38,32 @@ public class MotorInputs {
 
   /** Indica se ha alguma falha ativa de hardware ou sobrecorrente. */
   public boolean faulted = false;
+
+  @Override
+  public void toLog(LogTable table) {
+    table.put("PositionRotations", positionRotations);
+    table.put("PositionRadians", positionRadians);
+    table.put("VelocityRotationsPerSec", velocityRotationsPerSec);
+    table.put("VelocityRadiansPerSec", velocityRadiansPerSec);
+    table.put("AppliedVolts", appliedVolts);
+    table.put("StatorCurrentAmps", statorCurrentAmps);
+    table.put("SupplyCurrentAmps", supplyCurrentAmps);
+    table.put("TempCelsius", tempCelsius);
+    table.put("IsBraking", isBraking);
+    table.put("Faulted", faulted);
+  }
+
+  @Override
+  public void fromLog(LogTable table) {
+    positionRotations = table.get("PositionRotations", positionRotations);
+    positionRadians = table.get("PositionRadians", positionRadians);
+    velocityRotationsPerSec = table.get("VelocityRotationsPerSec", velocityRotationsPerSec);
+    velocityRadiansPerSec = table.get("VelocityRadiansPerSec", velocityRadiansPerSec);
+    appliedVolts = table.get("AppliedVolts", appliedVolts);
+    statorCurrentAmps = table.get("StatorCurrentAmps", statorCurrentAmps);
+    supplyCurrentAmps = table.get("SupplyCurrentAmps", supplyCurrentAmps);
+    tempCelsius = table.get("TempCelsius", tempCelsius);
+    isBraking = table.get("IsBraking", isBraking);
+    faulted = table.get("Faulted", faulted);
+  }
 }

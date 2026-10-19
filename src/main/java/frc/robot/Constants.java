@@ -4,6 +4,8 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.RobotBase;
+
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
  * constants. This class should not be used for any other purpose. All constants should be declared
@@ -13,7 +15,39 @@ package frc.robot;
  * constants are needed, to reduce verbosity.
  */
 public final class Constants {
+  /** Modo de execucao do codigo, usado para configurar o AdvantageKit. */
+  public enum Mode {
+    /** Rodando no robo real. */
+    REAL,
+    /** Rodando em simulacao no computador. */
+    SIM,
+    /** Reprocessando um log (replay) no computador. */
+    REPLAY
+  }
+
+  /** Mude para {@link Mode#REPLAY} para reexecutar um arquivo de log no simulador. */
+  private static final Mode kSimMode = Mode.SIM;
+
+  public static final Mode kCurrentMode = RobotBase.isReal() ? Mode.REAL : kSimMode;
+
   public static class OperatorConstants {
     public static final int kDriverControllerPort = 0;
+  }
+
+  public static class DriveConstants {
+    public static final double kMaxSpeedMps = 4.5;
+  }
+
+  public static class IntakeConstants {
+    public static final int kCanId = 23;
+    public static final String kCanBus = ""; // Barramento CAN padrao do RoboRIO
+    public static final frc.robot.lib.motors.MotorType kMotorType =
+        frc.robot.lib.motors.MotorType.SPARK_MAX;
+    public static final boolean kInverted = false;
+    public static final double kCurrentLimitAmps = 35.0;
+
+    // Velocidades padrao
+    public static final double kIntakeSpeed = 0.8;
+    public static final double kOuttakeSpeed = -0.6;
   }
 }

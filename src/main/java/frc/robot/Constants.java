@@ -31,11 +31,34 @@ public final class Constants {
   public static final Mode kCurrentMode = RobotBase.isReal() ? Mode.REAL : kSimMode;
 
   public static class OperatorConstants {
+    /** Controle do PILOTO: controla somente o swerve. */
     public static final int kDriverControllerPort = 0;
+
+    /** Controle do OPERADOR: controla os subsistemas (coleta, intake, shooter...). */
+    public static final int kOperatorControllerPort = 1;
   }
 
   public static class DriveConstants {
     public static final double kMaxSpeedMps = 4.5;
+
+    /** Velocidade angular maxima (rad/s). */
+    public static final double kMaxAngularSpeedRadPerSec = Math.PI * 2.0;
+
+    // --- Teleoperacao do piloto (FieldDriveCommand / FreedomDriveCommand) ---
+    /** Zona morta dos analogicos (0..1). */
+    public static final double kStickDeadband = 0.08;
+
+    /**
+     * Fracao da velocidade maxima SEM apertar o RT. Apertando o RT (analogico) a velocidade sobe
+     * linearmente ate 100%. Com 0.0 o robo so anda enquanto o RT estiver apertado.
+     */
+    public static final double kBaseSpeedFraction = 0.40;
+
+    /** Fracao da velocidade angular maxima nos giros (nao depende do RT). */
+    public static final double kRotationSpeedFraction = 0.60;
+
+    /** Zona morta do gatilho RT (0..1). */
+    public static final double kBoostDeadband = 0.05;
   }
 
   public static class IntakeConstants {

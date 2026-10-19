@@ -35,6 +35,29 @@ public final class MotorFactory {
   }
 
   /**
+   * Cria o motor do tipo real informado e, em simulacao, troca automaticamente por um motor
+   * simulado. E o metodo recomendado para subsistemas: o mesmo codigo roda no robo e no simulador.
+   * @param realType Tipo do hardware real (TALON_FX, SPARK_MAX, SPARK_FLEX).
+   */
+  public static MotorController createOrSim(
+      int canId, String canBus, MotorType realType, MotorConfig config) {
+    if (RobotBase.isSimulation()) {
+      // O motor simulado usa o modelo fisico do motor real (ex: Vortex 6784 RPM livres)
+      return new SimulatedMotor("Motor_CAN_" + canId, simulationModelFor(realType), config);
+    }
+    return create(canId, canBus, realType, config);
+  }
+
+  /** Modelo fisico (DCMotor) usado na simulacao para cada tipo de controlador. */
+  private static DCMotor simulationModelFor(MotorType type) {
+    return switch (type) {
+      case SPARK_FLEX -> DCMotor.getNeoVortex(1);
+      case SPARK_MAX -> DCMotor.getNEO(1);
+      case TALON_FX, SIMULATED -> DCMotor.getKrakenX60(1);
+    };
+  }
+
+  /**
    * Cria um Talon FX (Kraken X60 ou Falcon 500) no barramento CAN padrao ou CANivore.
    */
   public static MotorController createTalonFX(int canId, String canBus, MotorConfig config) {

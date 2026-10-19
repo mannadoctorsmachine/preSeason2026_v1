@@ -8,6 +8,7 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -17,9 +18,14 @@ import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.auto.PathPlannerSetup;
 import frc.robot.commands.Autos;
+import frc.robot.commands.swerve.DriveModeSelector;
+import frc.robot.commands.swerve.TeleopDriveInputs;
 import frc.robot.lib.navigation.GoToPoseCommand;
 import frc.robot.lib.navigation.ObstacleField;
 import frc.robot.lib.vision.VisionCameraConfig;
+import frc.robot.subsystems.collector.CollectorSubsystem;
+import frc.robot.subsystems.intake.IntakePivotSubsystem;
+import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.swerve.SwerveSubsystem;
 import frc.robot.subsystems.vision.VisionSubsystem;
 
@@ -28,13 +34,30 @@ import frc.robot.subsystems.vision.VisionSubsystem;
  *
  * <p>Fluxo de dados: Swerve (rodas + gyro) e Vision (Limelights) alimentam o {@link RobotState};
  * GoTo e PathPlanner leem a pose do RobotState e comandam o Swerve.
+ *
+ * <p>Dois controles: o do PILOTO (porta 0) controla somente o swerve; o do OPERADOR (porta 1)
+ * controla os subsistemas (coleta, intake, shooter).
  */
 public class RobotContainer {
+  /** Piloto: controla somente o swerve. */
   private final CommandXboxController m_driverController =
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
 
+  /** Operador: controla coleta, intake e shooter. */
+  private final CommandXboxController m_operatorController =
+      new CommandXboxController(OperatorConstants.kOperatorControllerPort);
+
   private final SwerveSubsystem m_swerve = new SwerveSubsystem();
   private final RobotState m_robotState = new RobotState(m_swerve.getKinematics());
+
+  /** Modo de direcao do piloto (FIELD ou FREEDOM). */
+  private final DriveModeSelector m_driveMode = new DriveModeSelector();
+
+  /** Coleta (rolo), pivo do intake e conjunto Index/Intermediario/Shooter. */
+  private final CollectorSubsystem m_collector = new CollectorSubsystem();
+
+  private final IntakePivotSubsystem m_intakePivot = new IntakePivotSubsystem();
+  private final ShooterSubsystem m_shooter = new ShooterSubsystem();
 
   /**
    * Visao: adicione quantas Limelights quiser. Prioridade 0 = principal; numeros maiores so enviam
@@ -67,20 +90,41 @@ public class RobotContainer {
     SmartDashboard.putData("Auto Chooser", m_autoChooser);
 
     configureBindings();
+    configureOperatorBindings();
+    m_driveMode.publish();
   }
 
+  // PILOTO (porta 0): somente o swerve.
+  //   Analogico esquerdo = direcao | Analogico direito = giro
+  //   RT = acelerar | LT = trocar de modo (FIELD <-> FREEDOM) | START = zerar a frente
   private void configureBindings() {
     // -------------------------------------------------------------------------------------------
-    // 1. ANDAR PARA TODOS OS LADOS (Swerve Drive)
+    // 1. ANDAR PARA TODOS OS LADOS (Swerve Drive) - dois modos, cada um e um comando separado:
+    //    FIELD   (FieldDriveCommand):   a frente e sempre a de quando o robo ligou/zerou
+    //    FREEDOM (FreedomDriveCommand): sem frente fixa, relativo ao robo
     // -------------------------------------------------------------------------------------------
-    // Analógicos: Left Y (frente/trás), Left X (esquerda/direita), Right X (giro)
-    m_swerve.setDefaultCommand(
-        m_swerve.driveCommand(
+    // Analógicos: Left Y (frente/trás), Left X (esquerda/direita), Right X (giro); RT acelera
+    TeleopDriveInputs driveInputs =
+        new TeleopDriveInputs(
             () -> -m_driverController.getLeftY(),
             () -> -m_driverController.getLeftX(),
-            () -> -m_driverController.getRightX()));
+            () -> -m_driverController.getRightX(),
+            m_driverController::getRightTriggerAxis);
+    m_swerve.setDefaultCommand(m_driveMode.createDefaultCommand(m_swerve, driveInputs));
 
-    // Botão START: zera a orientação do robô no campo (reset do Field-Oriented)
+    // Botão LT: troca o modo de direção; o controle vibra um instante para confirmar
+    m_driverController
+        .leftTrigger()
+        .onTrue(
+            Commands.runOnce(m_driveMode::toggle)
+                .andThen(
+                    Commands.startEnd(
+                            () -> m_driverController.setRumble(RumbleType.kBothRumble, 0.7),
+                            () -> m_driverController.setRumble(RumbleType.kBothRumble, 0.0))
+                        .withTimeout(0.15)));
+
+    // Botão START: zera a orientação do robô no campo (reset do Field-Oriented): a direção em que o
+    // robô aponta agora vira a frente do modo FIELD
     m_driverController.start().onTrue(Commands.runOnce(m_swerve::zeroHeading));
 
     // Botão X: Trava as rodas em formato "X" (impede o robô de ser empurrado na defesa)
@@ -102,13 +146,25 @@ public class RobotContainer {
                 m_swerve,
                 m_obstacles,
                 new Pose2d(2.0, 1.5, Rotation2d.fromDegrees(180.0))));
+  }
 
-  
+  // OPERADOR (porta 1): coleta, intake e shooter.
+  //   LT (segurar) = coleta gira (anti-horario)
+  //   LB = intake desce | RB = intake sobe (cliques repetidos sao ignorados)
+  //   RT (segurar) = Index -> Intermediario -> Shooter
+  private void configureOperatorBindings() {
+    m_operatorController.leftTrigger().whileTrue(m_collector.collectCommand());
+
+    m_operatorController.leftBumper().onTrue(m_intakePivot.lowerCommand());
+    m_operatorController.rightBumper().onTrue(m_intakePivot.raiseCommand());
+
+    m_operatorController.rightTrigger().whileTrue(m_shooter.shootCommand());
   }
 
   /** Registro de saidas que nao pertencem a nenhum subsistema. Chamado em Robot.robotPeriodic. */
   public void logPeriodic() {
     m_robotState.log();
+    m_driveMode.publish();
   }
 
   public Command getAutonomousCommand() {

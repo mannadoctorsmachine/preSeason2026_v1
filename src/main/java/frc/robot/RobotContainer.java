@@ -18,6 +18,9 @@ import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.auto.PathPlannerSetup;
 import frc.robot.commands.Autos;
+import frc.robot.commands.collector.CollectCommand;
+import frc.robot.commands.intake.MoveIntakeCommand;
+import frc.robot.commands.shooter.ShootSequenceCommand;
 import frc.robot.commands.swerve.DriveModeSelector;
 import frc.robot.commands.swerve.TeleopDriveInputs;
 import frc.robot.lib.navigation.GoToPoseCommand;
@@ -25,6 +28,7 @@ import frc.robot.lib.navigation.ObstacleField;
 import frc.robot.lib.vision.VisionCameraConfig;
 import frc.robot.subsystems.collector.CollectorSubsystem;
 import frc.robot.subsystems.intake.IntakePivotSubsystem;
+import frc.robot.subsystems.intake.IntakePivotSubsystem.Position;
 import frc.robot.subsystems.shooter.ShooterSubsystem;
 import frc.robot.subsystems.swerve.SwerveSubsystem;
 import frc.robot.subsystems.vision.VisionSubsystem;
@@ -153,12 +157,12 @@ public class RobotContainer {
   //   LB = intake desce | RB = intake sobe (cliques repetidos sao ignorados)
   //   RT (segurar) = Index -> Intermediario -> Shooter
   private void configureOperatorBindings() {
-    m_operatorController.leftTrigger().whileTrue(m_collector.collectCommand());
+    m_operatorController.leftTrigger().whileTrue(new CollectCommand(m_collector));
 
-    m_operatorController.leftBumper().onTrue(m_intakePivot.lowerCommand());
-    m_operatorController.rightBumper().onTrue(m_intakePivot.raiseCommand());
+    m_operatorController.leftBumper().onTrue(new MoveIntakeCommand(m_intakePivot, Position.DOWN));
+    m_operatorController.rightBumper().onTrue(new MoveIntakeCommand(m_intakePivot, Position.UP));
 
-    m_operatorController.rightTrigger().whileTrue(m_shooter.shootCommand());
+    m_operatorController.rightTrigger().whileTrue(new ShootSequenceCommand(m_shooter));
   }
 
   /** Registro de saidas que nao pertencem a nenhum subsistema. Chamado em Robot.robotPeriodic. */

@@ -13,6 +13,18 @@ são **placeholders** nos arquivos `*Constants.java` e precisam ser conferidos n
 > as versões a partir da 2026.8.25 (inclusive a 2026.10.03) não têm mais a API que o
 > `SwerveSubsystem` usa (detalhes em `lib/README.md`, seção 11).
 
+## Subsistema x comando
+- **Subsistema** (`subsystems/...`): só o hardware — motores, sensores, leituras, log e as proteções de
+  segurança (ex.: o shooter para os 3 estágios se um falhar). Expõe métodos simples (`setOutput`,
+  `setTarget`, `setIndexRpm`, `indexReached`, `stopAll`...).
+- **Comando** (`commands/...`): o **controle** — decide quando e como usar o subsistema:
+  - `commands/collector/CollectCommand`: gira o rolo enquanto estiver ativo (LT do operador).
+  - `commands/intake/MoveIntakeCommand`: pede DOWN/UP e carrega a **proteção contra clique duplo**.
+  - `commands/shooter/ShootSequenceCommand`: a cascata Index → Intermediário → Shooter, as fases e
+    o timeout.
+  - `commands/swerve/FieldDriveCommand`, `FreedomDriveCommand` (+ `DriveModeSelector`).
+  O `RobotContainer` só liga os botões a esses comandos.
+
 ## Controles
 
 ### Piloto (porta 0) — swerve
@@ -20,7 +32,7 @@ são **placeholders** nos arquivos `*Constants.java` e precisam ser conferidos n
 |---|---|
 | Analógico esquerdo | Direção (frente/trás/lados) |
 | Analógico direito | Giro |
-| **RT** (analógico) | **Acelerar**: sem apertar anda a 40 % da velocidade máxima; apertando até o fim, 100 % (`kBaseSpeedFraction`; com `0.0` o robô só anda com o RT apertado) |
+| **RT** (analógico) | **Acelerar**: o robô **só anda com o RT apertado**; a velocidade sobe até 100 % com o gatilho a fundo (`kBaseSpeedFraction = 0.0`; use `0.4` para um turbo sobre 40 %) |
 | **LT** | **Trocar o modo**: FIELD ⇄ FREEDOM (o controle vibra um instante) |
 | START | Zera a frente (`zeroHeading()`: a direção em que o robô aponta agora vira a frente do modo FIELD) |
 | X (segurar) | Trava as rodas em "X" |

@@ -4,22 +4,20 @@ import static frc.robot.subsystems.intake.IntakeConstants.*;
 
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.lib.motors.MotorConfig;
 import frc.robot.lib.motors.MotorController;
 import frc.robot.lib.motors.MotorFactory;
+import frc.robot.lib.motors.MotorFault;
 import frc.robot.lib.motors.NeutralMode;
 import frc.robot.lib.motors.SafePositionMotor;
 import org.littletonrobotics.junction.Logger;
 
 /**
  * Pivo do intake: 1 motor NEO Vortex que so desce (DOWN) e sobe (UP), com controle PID + perfil de
- * movimento e protecoes (veja {@link SafePositionMotor}).
- *
- * <p>Protecao contra clique duplo: o subsistema guarda para onde o intake esta indo e IGNORA
- * pedidos repetidos (LB duas vezes, ou LB com o intake ja abaixado) e pedidos que chegam logo depois
- * de um pedido aceito ({@link IntakeConstants#kRequestCooldownSeconds}). Nesses casos nada acontece.
+ * movimento e protecoes (veja {@link SafePositionMotor}). Este subsistema so cuida do HARDWARE e
+ * do estado; a decisao de aceitar ou ignorar um pedido (protecao contra clique duplo) e do comando
+ * {@link frc.robot.commands.intake.MoveIntakeCommand}.
  */
 public class IntakePivotSubsystem extends SubsystemBase {
   /** Posicoes possiveis do intake. */
@@ -31,7 +29,7 @@ public class IntakePivotSubsystem extends SubsystemBase {
   private final SafePositionMotor pivot;
 
   private Position target = Position.UP;
-  private double lastAcceptedRequestSeconds = Double.NEGATIVE_INFINITY;
+  private double lastTargetChangeSeconds = Double.NEGATIVE_INFINITY;
 
   public IntakePivotSubsystem() {
     MotorController motor =
@@ -72,34 +70,18 @@ public class IntakePivotSubsystem extends SubsystemBase {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // Pedidos (com protecao contra clique duplo)
+  // Acoes
   // ---------------------------------------------------------------------------------------------
 
   /**
-   * Pede uma posicao. Retorna false (e nao faz nada) se o pedido for repetido ou chegar durante o
-   * tempo de espera; um pedido da mesma posicao so e aceito de novo se o pivo estiver em falha (para
-   * permitir tentar outra vez).
-   *
-   * @return true se o pedido foi aceito.
+   * Define a nova posicao do intake (limpa uma falha anterior e inicia o movimento). Nao faz
+   * nenhuma verificacao de clique duplo: isso e do comando.
    */
-  public boolean request(Position requested) {
-    double now = Timer.getFPGATimestamp();
-
-    if (requested == target && !pivot.isFaulted()) {
-      Logger.recordOutput("Intake/Pivot/LastRequest", requested.name() + " ignorado: ja esta indo/em " + requested.name());
-      return false;
-    }
-    if (now - lastAcceptedRequestSeconds < kRequestCooldownSeconds) {
-      Logger.recordOutput("Intake/Pivot/LastRequest", requested.name() + " ignorado: clique duplo (espera)");
-      return false;
-    }
-
-    target = requested;
-    lastAcceptedRequestSeconds = now;
+  public void setTarget(Position newTarget) {
+    target = newTarget;
+    lastTargetChangeSeconds = Timer.getFPGATimestamp();
     pivot.clearFault();
-    pivot.setGoalRotations(toRotations(requested));
-    Logger.recordOutput("Intake/Pivot/LastRequest", requested.name() + " aceito");
-    return true;
+    pivot.setGoalRotations(toRotations(newTarget));
   }
 
   private static double toRotations(Position position) {
@@ -107,29 +89,20 @@ public class IntakePivotSubsystem extends SubsystemBase {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // Comandos
-  // ---------------------------------------------------------------------------------------------
-
-  /** Desce o intake (LB). Instantaneo: o subsistema continua controlando a posicao sozinho. */
-  public Command lowerCommand() {
-    return runOnce(() -> request(Position.DOWN)).withName("IntakeLower");
-  }
-
-  /** Sobe o intake (RB). Instantaneo: o subsistema continua controlando a posicao sozinho. */
-  public Command raiseCommand() {
-    return runOnce(() -> request(Position.UP)).withName("IntakeRaise");
-  }
-
-  // ---------------------------------------------------------------------------------------------
   // Leituras
   // ---------------------------------------------------------------------------------------------
 
-  public double getAngleDegrees() {
-    return pivot.getPositionRotations() * 360.0;
-  }
-
   public Position getTarget() {
     return target;
+  }
+
+  /** @return Segundos desde a ultima vez que o alvo foi definido. */
+  public double getSecondsSinceTargetChange() {
+    return Timer.getFPGATimestamp() - lastTargetChangeSeconds;
+  }
+
+  public double getAngleDegrees() {
+    return pivot.getPositionRotations() * 360.0;
   }
 
   /** @return true se o intake chegou na posicao pedida. */
@@ -139,6 +112,10 @@ public class IntakePivotSubsystem extends SubsystemBase {
 
   public boolean isFaulted() {
     return pivot.isFaulted();
+  }
+
+  public MotorFault getFault() {
+    return pivot.getFault();
   }
 
   private String describe() {

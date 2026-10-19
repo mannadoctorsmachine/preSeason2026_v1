@@ -49,10 +49,10 @@ public final class Constants {
     public static final double kStickDeadband = 0.08;
 
     /**
-     * Fracao da velocidade maxima SEM apertar o RT. Apertando o RT (analogico) a velocidade sobe
-     * linearmente ate 100%. Com 0.0 o robo so anda enquanto o RT estiver apertado.
+     * Fracao da velocidade maxima SEM apertar o RT. Com 0.0 o robo SO anda enquanto o RT estiver
+     * apertado (a velocidade sobe linearmente com o RT ate 100%). Use 0.4 para um turbo sobre 40%.
      */
-    public static final double kBaseSpeedFraction = 0.40;
+    public static final double kBaseSpeedFraction = 0.0;
 
     /** Fracao da velocidade angular maxima nos giros (nao depende do RT). */
     public static final double kRotationSpeedFraction = 0.60;

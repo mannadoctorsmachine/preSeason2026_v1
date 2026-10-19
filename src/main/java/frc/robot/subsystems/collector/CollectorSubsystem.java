@@ -2,7 +2,6 @@ package frc.robot.subsystems.collector;
 
 import static frc.robot.subsystems.collector.CollectorConstants.*;
 
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.lib.motors.MotorConfig;
 import frc.robot.lib.motors.MotorController;
@@ -12,8 +11,9 @@ import frc.robot.lib.motors.NeutralMode;
 import org.littletonrobotics.junction.Logger;
 
 /**
- * Sistema de coleta: um rolo com 1 motor NEO Vortex. Enquanto o comando estiver ativo (botao LT do
- * operador segurado) o motor gira no sentido anti-horario; ao soltar, para.
+ * Sistema de coleta: um rolo com 1 motor NEO Vortex. Este subsistema so cuida do HARDWARE (motor,
+ * leituras e log). Quem decide quando girar e o comando
+ * {@link frc.robot.commands.collector.CollectCommand}.
  */
 public class CollectorSubsystem extends SubsystemBase {
   private final MotorController roller;
@@ -41,15 +41,10 @@ public class CollectorSubsystem extends SubsystemBase {
     Logger.recordOutput("Collector/Running", running);
   }
 
-  /** Gira o rolo (anti-horario) enquanto o comando estiver ativo; para ao terminar/cancelar. */
-  public Command collectCommand() {
-    return runEnd(
-            () -> {
-              running = true;
-              roller.setPercentOutput(kCollectOutput);
-            },
-            this::stop)
-        .withName("Collect");
+  /** Aplica uma saida percentual (-1..1) ao rolo. */
+  public void setOutput(double percent) {
+    running = percent != 0.0;
+    roller.setPercentOutput(percent);
   }
 
   public void stop() {

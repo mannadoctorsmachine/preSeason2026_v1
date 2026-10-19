@@ -326,7 +326,8 @@ Robot.robotPeriodic()
 | `FieldDriveCommand`, `FreedomDriveCommand` | `SwerveSubsystem` (`runVelocity`, `getHeading`), `TeleopDriveInputs` |
 | `TeleopDriveInputs` | `Constants.DriveConstants` (velocidades, zonas mortas, fração do RT) |
 | `DriveModeSelector` | os dois comandos de direção; guarda o modo (FIELD/FREEDOM) e monta o comando padrão do swerve |
-| `CollectorSubsystem`, `IntakePivotSubsystem`, `ShooterSubsystem` | `MotorFactory.createOrSim`, `SafeVelocityMotor`/`SafePositionMotor`, `Logger` (veja `subsystems/README.md`) |
+| `CollectorSubsystem`, `IntakePivotSubsystem`, `ShooterSubsystem` | só hardware: `MotorFactory.createOrSim`, `SafeVelocityMotor`/`SafePositionMotor`, `Logger` (veja `subsystems/README.md`) |
+| `CollectCommand`, `MoveIntakeCommand`, `ShootSequenceCommand` | o **controle**: usam só a API pública dos subsistemas e as constantes (`commands/collector`, `commands/intake`, `commands/shooter`) |
 
 ### 8.2 Swerve (YAGSL + JSON em `deploy/swerve`)
 O drivetrain **não usa** `lib.motors`/`lib.sensors`: o **YAGSL** controla os motores, encoders e o

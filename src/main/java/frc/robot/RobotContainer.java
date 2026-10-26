@@ -159,8 +159,8 @@ public class RobotContainer {
   private void configureOperatorBindings() {
     m_operatorController.leftTrigger().whileTrue(new CollectCommand(m_collector));
 
-    m_operatorController.leftBumper().onTrue(new MoveIntakeCommand(m_intakePivot, Position.DOWN));
-    m_operatorController.rightBumper().onTrue(new MoveIntakeCommand(m_intakePivot, Position.UP));
+    m_operatorController.leftBumper().onTrue(new MoveIntakeCommand(m_intakePivot, Position.OPEN));
+    m_operatorController.rightBumper().onTrue(new MoveIntakeCommand(m_intakePivot, Position.CLOSED));
 
     m_operatorController.rightTrigger().whileTrue(new ShootSequenceCommand(m_shooter));
   }

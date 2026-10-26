@@ -14,21 +14,23 @@ import frc.robot.lib.motors.SafePositionMotor;
 import org.littletonrobotics.junction.Logger;
 
 /**
- * Pivo do intake: 1 motor NEO Vortex que so desce (DOWN) e sobe (UP), com controle PID + perfil de
- * movimento e protecoes (veja {@link SafePositionMotor}). Este subsistema so cuida do HARDWARE e
+ * Pivo do intake: 1 motor NEO Vortex que so abre (OPEN) e fecha (CLOSED), com controle PID + perfil
+ * de movimento e protecoes (veja {@link SafePositionMotor}). As posicoes sao o valor do encoder
+ * primario (rotacoes do motor): fechado = {@code kClosedPosition}, aberto = {@code kOpenPosition}
+ * (veja {@link IntakeConstants}). Este subsistema so cuida do HARDWARE e
  * do estado; a decisao de aceitar ou ignorar um pedido (protecao contra clique duplo) e do comando
  * {@link frc.robot.commands.intake.MoveIntakeCommand}.
  */
 public class IntakePivotSubsystem extends SubsystemBase {
   /** Posicoes possiveis do intake. */
   public enum Position {
-    UP,
-    DOWN
+    CLOSED,
+    OPEN
   }
 
   private final SafePositionMotor pivot;
 
-  private Position target = Position.UP;
+  private Position target = Position.CLOSED;
   private double lastTargetChangeSeconds = Double.NEGATIVE_INFINITY;
 
   public IntakePivotSubsystem() {
@@ -40,24 +42,27 @@ public class IntakePivotSubsystem extends SubsystemBase {
             new MotorConfig()
                 .withInverted(kPivotInverted)
                 .withNeutralMode(NeutralMode.BRAKE)
-                .withGearRatio(kPivotGearRatio)
+                .withGearRatio(1.0) // posicao = encoder primario (rotacoes do motor)
                 .withStatorCurrentLimit(kPivotCurrentLimitAmps)
                 .withSupplyCurrentLimit(kPivotCurrentLimitAmps));
 
-    pivot =
-        new SafePositionMotor(
-            "Intake/Pivot",
-            motor,
-            new SafePositionMotor.Config(kUpDegrees / 360.0, kDownDegrees / 360.0)
-                .withGains(kPivotKp, kPivotKd)
-                .withFeedforward(kPivotKs, kPivotKv)
-                .withGravity(kPivotKg, 0.0)
-                .withMaxVolts(kPivotMaxVolts)
-                .withProfile(kPivotMaxVelocityRotPerSec, kPivotMaxAccelerationRotPerSecSq)
-                .withTolerance(kPivotToleranceDegrees / 360.0));
+    SafePositionMotor.Config config =
+        new SafePositionMotor.Config(kClosedPosition, kOpenPosition)
+            .withGains(kPivotKp, kPivotKd)
+            .withFeedforward(kPivotKs, kPivotKv)
+            .withGravity(kPivotKg, 0.0)
+            .withMaxVolts(kPivotMaxVolts)
+            .withProfile(kPivotMaxVelocityRotPerSec, kPivotMaxAccelerationRotPerSecSq)
+            .withTolerance(kPivotTolerance);
+    // Limiares do guarda de seguranca em rotacoes do motor (o curso total e pequeno)
+    config.wrongDirectionRotations = 0.05;
+    config.stallProgressRotations = 0.02;
+    config.graceVelocityRotPerSec = 1.0;
 
-    // O robo liga com o intake recolhido: o encoder relativo assume a posicao UP
-    pivot.resetPosition(kUpDegrees / 360.0);
+    pivot = new SafePositionMotor("Intake/Pivot", motor, config);
+
+    // O robo liga com o intake FECHADO: o encoder relativo assume o valor de fechado
+    pivot.resetPosition(kClosedPosition);
   }
 
   @Override
@@ -65,7 +70,7 @@ public class IntakePivotSubsystem extends SubsystemBase {
     pivot.periodic();
 
     Logger.recordOutput("Intake/Pivot/Target", target.name());
-    Logger.recordOutput("Intake/Pivot/AngleDegrees", getAngleDegrees());
+    Logger.recordOutput("Intake/Pivot/Position", getPosition());
     SmartDashboard.putString("Intake", describe());
   }
 
@@ -85,7 +90,7 @@ public class IntakePivotSubsystem extends SubsystemBase {
   }
 
   private static double toRotations(Position position) {
-    return ((position == Position.DOWN) ? kDownDegrees : kUpDegrees) / 360.0;
+    return (position == Position.OPEN) ? kOpenPosition : kClosedPosition;
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -101,8 +106,9 @@ public class IntakePivotSubsystem extends SubsystemBase {
     return Timer.getFPGATimestamp() - lastTargetChangeSeconds;
   }
 
-  public double getAngleDegrees() {
-    return pivot.getPositionRotations() * 360.0;
+  /** @return Posicao do encoder primario (rotacoes do motor), o mesmo valor do REV Client. */
+  public double getPosition() {
+    return pivot.getPositionRotations();
   }
 
   /** @return true se o intake chegou na posicao pedida. */
@@ -122,7 +128,7 @@ public class IntakePivotSubsystem extends SubsystemBase {
     if (pivot.isFaulted()) {
       return "FALHA: " + pivot.getFault().description;
     }
-    String state = pivot.atGoal() ? "" : (target == Position.DOWN ? "descendo" : "subindo");
+    String state = pivot.atGoal() ? "" : (target == Position.OPEN ? "abrindo" : "fechando");
     return target.name() + (state.isEmpty() ? "" : " (" + state + ")");
   }
 }

@@ -8,7 +8,7 @@ import frc.robot.subsystems.intake.IntakePivotSubsystem.Position;
 import org.littletonrobotics.junction.Logger;
 
 /**
- * Pede ao intake para descer (LB) ou subir (RB). E um comando instantaneo que carrega a PROTECAO
+ * Pede ao intake para abrir (LB) ou fechar (RB). E um comando instantaneo que carrega a PROTECAO
  * CONTRA CLIQUE DUPLO: o pedido e ignorado (nada acontece) quando
  * <ul>
  *   <li>o intake ja esta na posicao pedida ou indo para ela (ex: LB duas vezes), ou

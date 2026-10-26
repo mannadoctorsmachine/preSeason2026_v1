@@ -50,8 +50,8 @@ são **placeholders** nos arquivos `*Constants.java` e precisam ser conferidos n
 | Controle | Ação |
 |---|---|
 | **LT** (segurar) | **Coleta**: o rolo (1 Vortex) gira no sentido anti-horário; soltar para |
-| **LB** | **Intake desce** (PID + perfil de movimento) |
-| **RB** | **Intake sobe** |
+| **LB** | **Intake abre** (PID + perfil de movimento) |
+| **RB** | **Intake fecha** |
 | **RT** (segurar) | **Index → Intermediário → Shooter** em cascata; soltar para tudo |
 
 ## Coleta (`subsystems/collector`)
@@ -60,19 +60,20 @@ Vortex = anti-horário visto de frente para o eixo de saída; se no robô o rolo
 errado, inverta `kRollerInverted`.
 
 ## Intake — pivô (`subsystems/intake`)
-1 motor NEO Vortex que só **desce** (DOWN) e **sobe** (UP), com **PID + perfil trapezoidal** na
-roboRIO (volts), tensão máxima de 4 V e curso limitado (`kUpDegrees`..`kDownDegrees`).
+1 motor NEO Vortex que só **abre** (OPEN) e **fecha** (CLOSED), com **PID + perfil trapezoidal** na
+roboRIO (volts), tensão máxima de 4 V e curso limitado a `kClosedPosition` (0,0) ..`kOpenPosition` (3,6).
+As posições são o valor do **encoder primário** do SPARK (o mesmo número que o REV Hardware Client mostra em *Position*, em rotações do motor), sem conversão por graus nem por relação.
 
 **Proteção contra clique duplo:** o subsistema lembra para onde o intake está indo e **ignora**
-- um pedido repetido (LB duas vezes, ou LB com o intake já abaixado), e
+- um pedido repetido (LB duas vezes, ou LB com o intake já aberto), e
 - qualquer pedido que chegue em menos de 0,4 s depois de um pedido aceito
   (`kRequestCooldownSeconds`).
 
 Nesses casos nada acontece (fica registrado em `Intake/Pivot/LastRequest`). Se o pivô estiver em
 falha, repetir o mesmo botão é aceito de novo (serve para tentar outra vez).
 
-> **Ligue o robô com o intake recolhido (UP):** o encoder do motor é relativo e assume a posição UP
-> ao ligar. Ajuste `kDownDegrees` um pouco **antes** do batente, para o motor não forçar contra ele.
+> **Ligue o robô com o intake fechado (CLOSED):** o encoder do motor é relativo e assume `kClosedPosition`
+> quando o código inicia. Ajuste `kOpenPosition` um pouco **antes** do batente, para o motor não forçar contra ele.
 
 Proteções (`SafePositionMotor`): se a tensão empurra o intake para o alvo mas ele anda para o lado
 oposto → **WRONG_DIRECTION** (motor ou encoder invertido; se acontecer, mude `kPivotInverted`); se há
@@ -116,7 +117,7 @@ Pronto"** (booleano) fica verdadeiro em `READY`.
 | Arquivo | Valores |
 |---|---|
 | `collector/CollectorConstants` | ID CAN (23), `kCollectOutput`, `kRollerInverted` |
-| `intake/IntakeConstants` | ID CAN (21), relação (45), `kUpDegrees`/`kDownDegrees`, ganhos, `kPivotInverted`, tempo de espera |
+| `intake/IntakeConstants` | ID CAN (21), `kClosedPosition` (0) / `kOpenPosition` (3,6), ganhos, `kPivotInverted`, tempo de espera |
 | `shooter/ShooterConstants` | IDs CAN (22/24/25), relações, sentidos (±1), `kReachedFraction`, ganho `kPVoltsPerRpm`, limites de corrente |
 | `Constants.DriveConstants` | `kBaseSpeedFraction`, `kRotationSpeedFraction`, zonas mortas, velocidades máximas |
 
